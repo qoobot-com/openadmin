@@ -383,8 +383,7 @@ docker-compose logs -f enterprise-app
 ```
 
 ## 📄 许可证
-
-MIT License
+Apache License 2.0
 
 ## 🤝 贡献
 
