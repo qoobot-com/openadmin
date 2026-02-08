@@ -1,0 +1,7 @@
+# OpenAdmin Auto Configuration
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.qoobot.openadmin.starter.OpenAdminAutoConfiguration
+
+# Configuration Properties
+org.springframework.boot.context.properties.ConfigurationProperties=\
+com.qoobot.openadmin.starter.properties.OpenAdminProperties

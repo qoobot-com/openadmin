@@ -1,0 +1,39 @@
+# 安全模块配置文件
+
+# 服务器配置
+server:
+  port: 8082
+
+# 应用配置
+spring:
+  application:
+    name: openadmin-security
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+
+# JWT配置
+app:
+  jwt:
+    secret: mySecretKeyForJWTTokenGenerationWhichShouldBe32Characters
+    expiration: 86400000  # 24小时
+    refresh-expiration: 604800000  # 7天
+
+# 日志配置
+logging:
+  level:
+    com.qoobot.openadmin.security: DEBUG
+    org.springframework.security: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Actuator配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

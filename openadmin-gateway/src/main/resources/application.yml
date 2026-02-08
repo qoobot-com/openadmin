@@ -1,0 +1,240 @@
+server:
+  port: 9090
+
+spring:
+  application:
+    name: openadmin-gateway
+  
+  cloud:
+    gateway:
+      # 全局路由配置
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+        - name: Retry
+          args:
+            retries: 3
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+            methods: GET,POST,PUT,DELETE
+            series: SERVER_ERROR
+      
+      # 路由发现配置
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+          url-expression: "'lb://' + serviceId"
+      
+      # 全局CORS配置
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origin-patterns: "*"
+            allowed-methods: "*"
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600
+    
+    # Nacos配置
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: openadmin-dev
+        group: DEFAULT_GROUP
+        username: nacos
+        password: nacos
+      config:
+        server-addr: localhost:8848
+        namespace: openadmin-dev
+        group: DEFAULT_GROUP
+        file-extension: yaml
+        username: nacos
+        password: nacos
+
+  # Redis配置（用于存储限流和黑名单数据）
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 20
+        max-idle: 10
+        min-idle: 5
+        max-wait: 2000ms
+
+  # 安全配置
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/auth/realms/openadmin
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+      cors:
+        allowed-origins: "*"
+        allowed-methods: "*"
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# 网关自定义配置
+gateway:
+  # 认证配置
+  auth:
+    enabled: true
+    jwt:
+      secret: ${JWT_SECRET:openadmin-secret-key-for-jwt-token-generation}
+      expiration: ${JWT_EXPIRATION:3600}
+    whitelist:
+      - /auth/**
+      - /health
+      - /actuator/**
+      - /swagger-ui/**
+      - /v3/api-docs/**
+  
+  # 限流配置
+  rate-limit:
+    enabled: true
+    # 全局限流
+    global-permits: 1000
+    global-period: 1  # 秒
+    # IP限流
+    ip-permits: 100
+    ip-period: 60  # 秒
+    # 用户限流
+    user-permits: 200
+    user-period: 60  # 秒
+  
+  # 负载均衡配置
+  load-balancer:
+    algorithm: ROUND_ROBIN  # ROUND_ROBIN, RANDOM, WEIGHTED_RESPONSE_TIME
+    max-retries: 3
+    retry-timeout-ms: 3000
+    enable-circuit-breaker: true
+  
+  # 熔断器配置
+  circuit-breaker:
+    failure-rate-threshold: 50
+    slow-call-rate-threshold: 50
+    slow-call-duration-threshold: 2s
+    wait-duration-in-open-state: 30s
+    permitted-number-of-calls-in-half-open-state: 10
+    minimum-number-of-calls: 20
+  
+  # 日志配置
+  logging:
+    level:
+      com.qoobot.openadmin.gateway: DEBUG
+      org.springframework.cloud.gateway: INFO
+      reactor.netty.http.client: DEBUG
+
+# Resilience4j配置
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 100
+        minimumNumberOfCalls: 10
+        permittedNumberOfCallsInHalfOpenState: 5
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      shared:
+        slidingWindowSize: 100
+        permittedNumberOfCallsInHalfOpenState: 30
+        waitDurationInOpenState: 1s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+    instances:
+      backendA:
+        baseConfig: default
+      backendB:
+        baseConfig: shared
+  
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 100
+        retryExceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.io.IOException
+        ignoreExceptions:
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+    instances:
+      backendA:
+        baseConfig: default
+      backendB:
+        baseConfig: default
+
+  ratelimiter:
+    configs:
+      default:
+        registerHealthIndicator: true
+        timeoutDuration: 5s
+        limitRefreshPeriod: 10s
+        limitForPeriod: 10
+    instances:
+      backendA:
+        baseConfig: default
+      backendB:
+        baseConfig: default
+
+logging:
+  level:
+    root: INFO
+    com.qoobot.openadmin.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+    io.github.resilience4j: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  
+  file:
+    name: logs/gateway.log
+    max-size: 10MB
+    max-history: 30
+
+# JVM参数优化
+---
+spring:
+  profiles: production
+
+server:
+  shutdown: graceful
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+# 性能优化配置
+server:
+  undertow:
+    buffer-size: 1024
+    direct-buffers: true
+    threads:
+      io: 16
+      worker: 128
+
+# 监控配置
+management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      sla:
+        http.server.requests: 1ms,5ms,10ms,50ms,100ms,500ms

@@ -1,0 +1,16 @@
+FROM docker.io/openjdk:25-jdk-slim
+
+# 设置国内镜像源
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list && \
+    sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
+
+WORKDIR /app
+
+# 复制jar包
+COPY openadmin-samples/target/openadmin-samples-10.3.0-SNAPSHOT.jar app.jar
+
+# 暴露端口
+EXPOSE 8083
+
+# 启动应用
+ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=docker"]

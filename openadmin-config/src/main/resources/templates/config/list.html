@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置管理中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 250px;
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+        .config-table th {
+            background-color: #e9ecef;
+        }
+        .badge-env {
+            font-size: 0.75em;
+        }
+        .env-dev { background-color: #d1ecf1; color: #0c5460; }
+        .env-test { background-color: #fff3cd; color: #856404; }
+        .env-prod { background-color: #f8d7da; color: #721c24; }
+        .encrypted-badge { background-color: #28a745; color: white; }
+        .status-active { color: #28a745; }
+        .status-inactive { color: #dc3545; }
+        .action-buttons .btn {
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <div class="p-3 border-bottom">
+            <h5><i class="bi bi-gear"></i> 配置管理</h5>
+        </div>
+        <div class="list-group list-group-flush">
+            <a href="#" class="list-group-item list-group-item-action active" onclick="loadConfigs()">
+                <i class="bi bi-list"></i> 配置列表
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="showCreateForm()">
+                <i class="bi bi-plus-circle"></i> 新增配置
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="showImportModal()">
+                <i class="bi bi-upload"></i> 导入配置
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="exportConfigs()">
+                <i class="bi bi-download"></i> 导出配置
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="showStatistics()">
+                <i class="bi bi-bar-chart"></i> 统计信息
+            </a>
+        </div>
+        
+        <div class="p-3 border-top">
+            <h6>环境筛选</h6>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="envDev" checked onchange="filterConfigs()">
+                <label class="form-check-label" for="envDev">开发环境</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="envTest" checked onchange="filterConfigs()">
+                <label class="form-check-label" for="envTest">测试环境</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="envProd" checked onchange="filterConfigs()">
+                <label class="form-check-label" for="envProd">生产环境</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div class="main-content">
+        <!-- 搜索和操作栏 -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="searchKeyword" placeholder="搜索配置键或描述...">
+                    <button class="btn btn-outline-secondary" type="button" onclick="searchConfigs()">
+                        <i class="bi bi-search"></i> 搜索
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-primary" onclick="refreshConfigs()">
+                    <i class="bi bi-arrow-clockwise"></i> 刷新
+                </button>
+                <button class="btn btn-success" onclick="batchPublish()">
+                    <i class="bi bi-send"></i> 批量发布
+                </button>
+            </div>
+        </div>
+
+        <!-- 配置表格 -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-table"></i> 配置项列表</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover config-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="selectAll"></th>
+                                <th>配置键</th>
+                                <th>环境</th>
+                                <th>分组</th>
+                                <th>类型</th>
+                                <th>状态</th>
+                                <th>加密</th>
+                                <th>最后更新</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="configTableBody">
+                            <!-- 配置数据将通过JavaScript动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 分页 -->
+                <nav aria-label="配置分页">
+                    <ul class="pagination justify-content-center" id="pagination">
+                        <!-- 分页按钮将动态生成 -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增/编辑配置模态框 -->
+    <div class="modal fade" id="configModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="configModalTitle">新增配置</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="configForm">
+                        <input type="hidden" id="configId">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="configKey" class="form-label">配置键 *</label>
+                                <input type="text" class="form-control" id="configKey" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="environment" class="form-label">环境 *</label>
+                                <select class="form-select" id="environment" required>
+                                    <option value="">请选择环境</option>
+                                    <option value="dev">开发环境</option>
+                                    <option value="test">测试环境</option>
+                                    <option value="prod">生产环境</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="groupName" class="form-label">分组</label>
+                                <input type="text" class="form-control" id="groupName">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="configType" class="form-label">类型 *</label>
+                                <select class="form-select" id="configType" required>
+                                    <option value="STRING">字符串</option>
+                                    <option value="NUMBER">数字</option>
+                                    <option value="BOOLEAN">布尔值</option>
+                                    <option value="JSON">JSON</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="configValue" class="form-label">配置值 *</label>
+                            <textarea class="form-control" id="configValue" rows="4" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">描述</label>
+                            <textarea class="form-control" id="description" rows="2"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveConfig()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入配置模态框 -->
+    <div class="modal fade" id="importModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">导入配置</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="importFile" class="form-label">选择配置文件</label>
+                        <input type="file" class="form-control" id="importFile" accept=".json">
+                    </div>
+                    <div class="alert alert-info">
+                        <small>支持JSON格式的配置文件导入</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="doImport()">导入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量操作模态框 -->
+    <div class="modal fade" id="batchModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">批量操作</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择操作</label>
+                        <select class="form-select" id="batchAction">
+                            <option value="publish">发布到环境</option>
+                            <option value="status_active">设为启用</option>
+                            <option value="status_inactive">设为禁用</option>
+                            <option value="delete">删除</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="targetEnvDiv">
+                        <label class="form-label">目标环境</label>
+                        <select class="form-select" id="targetEnvironment">
+                            <option value="test">测试环境</option>
+                            <option value="prod">生产环境</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="executeBatchAction()">执行</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 全局变量
+        let currentPage = 0;
+        let pageSize = 10;
+        let currentConfigs = [];
+        let selectedConfigs = new Set();
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfigs();
+            
+            // 全选功能
+            document.getElementById('selectAll').addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.config-checkbox');
+                checkboxes.forEach(cb => cb.checked = this.checked);
+                updateSelectedConfigs();
+            });
+        });
+
+        // 加载配置列表
+        async function loadConfigs(page = 0) {
+            try {
+                const response = await fetch('/api/config/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        page: page,
+                        size: pageSize,
+                        keyword: document.getElementById('searchKeyword').value
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    renderConfigTable(data.content);
+                    renderPagination(data.totalElements, page);
+                    currentConfigs = data.content;
+                } else {
+                    alert('加载配置失败');
+                }
+            } catch (error) {
+                console.error('加载配置异常:', error);
+                alert('网络错误，请稍后重试');
+            }
+        }
+
+        // 渲染配置表格
+        function renderConfigTable(configs) {
+            const tbody = document.getElementById('configTableBody');
+            tbody.innerHTML = '';
+            
+            configs.forEach(config => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="checkbox" class="config-checkbox" value="${config.id}" onchange="updateSelectedConfigs()"></td>
+                    <td>
+                        <strong>${config.configKey}</strong>
+                        ${config.description ? `<br><small class="text-muted">${config.description}</small>` : ''}
+                    </td>
+                    <td>
+                        <span class="badge badge-env env-${config.environment}">
+                            ${getEnvironmentName(config.environment)}
+                        </span>
+                    </td>
+                    <td>${config.groupName || '-'}</td>
+                    <td>${getConfigTypeName(config.configType)}</td>
+                    <td>
+                        <span class="status-${config.status.toLowerCase()}">
+                            ${getStatusName(config.status)}
+                        </span>
+                    </td>
+                    <td>
+                        ${config.encrypted ? '<span class="badge bg-success encrypted-badge">已加密</span>' : '-'}
+                    </td>
+                    <td>${formatDate(config.updatedAt)}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-sm btn-outline-primary" onclick="editConfig(${config.id})">
+                            <i class="bi bi-pencil"></i> 编辑
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="publishConfig(${config.id})">
+                            <i class="bi bi-send"></i> 发布
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="viewHistory(${config.id})">
+                            <i class="bi bi-clock-history"></i> 历史
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteConfig(${config.id})">
+                            <i class="bi bi-trash"></i> 删除
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 渲染分页
+        function renderPagination(totalElements, currentPage) {
+            const totalPages = Math.ceil(totalElements / pageSize);
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+            
+            // 上一页
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${currentPage === 0 ? 'disabled' : ''}`;
+            prevLi.innerHTML = `<a class="page-link" href="#" onclick="loadConfigs(${currentPage - 1})">上一页</a>`;
+            pagination.appendChild(prevLi);
+            
+            // 页码
+            for (let i = 0; i < totalPages; i++) {
+                const li = document.createElement('li');
+                li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                li.innerHTML = `<a class="page-link" href="#" onclick="loadConfigs(${i})">${i + 1}</a>`;
+                pagination.appendChild(li);
+            }
+            
+            // 下一页
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${currentPage >= totalPages - 1 ? 'disabled' : ''}`;
+            nextLi.innerHTML = `<a class="page-link" href="#" onclick="loadConfigs(${currentPage + 1})">下一页</a>`;
+            pagination.appendChild(nextLi);
+        }
+
+        // 辅助函数
+        function getEnvironmentName(env) {
+            const envMap = {
+                'dev': '开发',
+                'test': '测试',
+                'prod': '生产'
+            };
+            return envMap[env] || env;
+        }
+
+        function getConfigTypeName(type) {
+            const typeMap = {
+                'STRING': '字符串',
+                'NUMBER': '数字',
+                'BOOLEAN': '布尔值',
+                'JSON': 'JSON'
+            };
+            return typeMap[type] || type;
+        }
+
+        function getStatusName(status) {
+            const statusMap = {
+                'ACTIVE': '启用',
+                'INACTIVE': '禁用',
+                'DEPRECATED': '废弃'
+            };
+            return statusMap[status] || status;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN');
+        }
+
+        // 更新选中配置
+        function updateSelectedConfigs() {
+            selectedConfigs.clear();
+            document.querySelectorAll('.config-checkbox:checked').forEach(cb => {
+                selectedConfigs.add(parseInt(cb.value));
+            });
+        }
+
+        // 显示创建表单
+        function showCreateForm() {
+            document.getElementById('configModalTitle').textContent = '新增配置';
+            document.getElementById('configForm').reset();
+            document.getElementById('configId').value = '';
+            new bootstrap.Modal(document.getElementById('configModal')).show();
+        }
+
+        // 编辑配置
+        async function editConfig(id) {
+            try {
+                const response = await fetch(`/api/config/${id}`);
+                if (response.ok) {
+                    const config = await response.json();
+                    document.getElementById('configModalTitle').textContent = '编辑配置';
+                    document.getElementById('configId').value = config.id;
+                    document.getElementById('configKey').value = config.configKey;
+                    document.getElementById('environment').value = config.environment;
+                    document.getElementById('groupName').value = config.groupName || '';
+                    document.getElementById('configType').value = config.configType;
+                    document.getElementById('configValue').value = config.configValue;
+                    document.getElementById('description').value = config.description || '';
+                    new bootstrap.Modal(document.getElementById('configModal')).show();
+                }
+            } catch (error) {
+                console.error('获取配置详情失败:', error);
+                alert('获取配置详情失败');
+            }
+        }
+
+        // 保存配置
+        async function saveConfig() {
+            const formData = {
+                configKey: document.getElementById('configKey').value,
+                environment: document.getElementById('environment').value,
+                groupName: document.getElementById('groupName').value,
+                configType: document.getElementById('configType').value,
+                configValue: document.getElementById('configValue').value,
+                description: document.getElementById('description').value
+            };
+
+            const configId = document.getElementById('configId').value;
+            const url = configId ? `/api/config/${configId}` : '/api/config';
+            const method = configId ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
+                    loadConfigs(currentPage);
+                    alert(configId ? '配置更新成功' : '配置创建成功');
+                } else {
+                    const error = await response.text();
+                    alert(`操作失败: ${error}`);
+                }
+            } catch (error) {
+                console.error('保存配置失败:', error);
+                alert('网络错误，请稍后重试');
+            }
+        }
+
+        // 删除配置
+        async function deleteConfig(id) {
+            if (!confirm('确定要删除这个配置吗？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/config/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadConfigs(currentPage);
+                    alert('配置删除成功');
+                } else {
+                    alert('删除配置失败');
+                }
+            } catch (error) {
+                console.error('删除配置失败:', error);
+                alert('网络错误，请稍后重试');
+            }
+        }
+
+        // 发布配置
+        async function publishConfig(id) {
+            const targetEnv = prompt('请输入目标环境 (test/prod):', 'test');
+            if (!targetEnv) return;
+
+            try {
+                const response = await fetch('/api/config/publish', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        configId: id,
+                        targetEnvironment: targetEnv,
+                        publisher: 'admin'
+                    })
+                });
+
+                if (response.ok) {
+                    alert('配置发布成功');
+                } else {
+                    alert('配置发布失败');
+                }
+            } catch (error) {
+                console.error('发布配置失败:', error);
+                alert('网络错误，请稍后重试');
+            }
+        }
+
+        // 查看历史
+        async function viewHistory(id) {
+            try {
+                const response = await fetch(`/api/config/${id}/history`);
+                if (response.ok) {
+                    const history = await response.json();
+                    let historyHtml = '<h6>配置变更历史</h6>';
+                    history.forEach(item => {
+                        historyHtml += `
+                            <div class="border-bottom pb-2 mb-2">
+                                <div><strong>版本 ${item.version}</strong> - ${formatDate(item.updatedAt)}</div>
+                                <div>操作人: ${item.updatedBy}</div>
+                                ${item.description ? `<div>说明: ${item.description}</div>` : ''}
+                            </div>
+                        `;
+                    });
+                    document.getElementById('configModalTitle').innerHTML = historyHtml;
+                    new bootstrap.Modal(document.getElementById('configModal')).show();
+                }
+            } catch (error) {
+                console.error('获取历史失败:', error);
+                alert('获取历史记录失败');
+            }
+        }
+
+        // 搜索配置
+        function searchConfigs() {
+            loadConfigs(0);
+        }
+
+        // 刷新配置
+        function refreshConfigs() {
+            loadConfigs(currentPage);
+        }
+
+        // 显示导入模态框
+        function showImportModal() {
+            new bootstrap.Modal(document.getElementById('importModal')).show();
+        }
+
+        // 执行导入
+        async function doImport() {
+            const fileInput = document.getElementById('importFile');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('请选择要导入的文件');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const response = await fetch('/api/config/import', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            data: e.target.result,
+                            operator: 'admin'
+                        })
+                    });
+
+                    if (response.ok) {
+                        bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+                        loadConfigs(0);
+                        alert('配置导入成功');
+                    } else {
+                        alert('配置导入失败');
+                    }
+                } catch (error) {
+                    console.error('导入配置失败:', error);
+                    alert('网络错误，请稍后重试');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 导出配置
+        async function exportConfigs() {
+            try {
+                const response = await fetch('/api/config/export', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        keyword: document.getElementById('searchKeyword').value
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const blob = new Blob([data.data], { type: 'application/json' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `configs_${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    alert('导出配置失败');
+                }
+            } catch (error) {
+                console.error('导出配置失败:', error);
+                alert('网络错误，请稍后重试');
+            }
+        }
+
+        // 显示统计信息
+        async function showStatistics() {
+            try {
+                const response = await fetch('/api/config/statistics');
+                if (response.ok) {
+                    const stats = await response.json();
+                    alert(`总配置数: ${stats.total}\n加密配置: ${stats.encrypted}\n环境数: ${stats.environments.length}`);
+                }
+            } catch (error) {
+                console.error('获取统计信息失败:', error);
+                alert('获取统计信息失败');
+            }
+        }
+
+        // 批量发布
+        function batchPublish() {
+            if (selectedConfigs.size === 0) {
+                alert('请先选择要操作的配置项');
+                return;
+            }
+            new bootstrap.Modal(document.getElementById('batchModal')).show();
+        }
+
+        // 执行批量操作
+        async function executeBatchAction() {
+            const action = document.getElementById('batchAction').value;
+            const targetEnv = document.getElementById('targetEnvironment').value;
+
+            if (action === 'delete' && !confirm('确定要删除选中的配置吗？')) {
+                return;
+            }
+
+            try {
+                let url, body;
+                switch (action) {
+                    case 'publish':
+                        url = '/api/config/publish';
+                        body = JSON.stringify({
+                            configId: Array.from(selectedConfigs)[0],
+                            targetEnvironment: targetEnv,
+                            publisher: 'admin'
+                        });
+                        break;
+                    case 'status_active':
+                    case 'status_inactive':
+                        url = '/api/config/batch-status';
+                        body = JSON.stringify({
+                            ids: Array.from(selectedConfigs),
+                            status: action.replace('status_', '').toUpperCase(),
+                            operator: 'admin'
+                        });
+                        break;
+                    case 'delete':
+                        // 批量删除需要逐个调用
+                        for (const id of selectedConfigs) {
+                            await fetch(`/api/config/${id}`, { method: 'DELETE' });
+                        }
+                        bootstrap.Modal.getInstance(document.getElementById('batchModal')).hide();
+                        loadConfigs(currentPage);
+                        alert('批量操作完成');
+                        return;
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: body
+                });
+
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('batchModal')).hide();
+                    loadConfigs(currentPage);
+                    alert('批量操作完成');
+                } else {
+                    alert('批量操作失败');
+                }
+            } catch (error) {
+                console.error('批量操作失败:', error);
+                alert('网络错误，请稍后重试');
+            }
+        }
+
+        // 环境筛选
+        function filterConfigs() {
+            // 实现环境筛选逻辑
+            console.log('环境筛选功能待实现');
+        }
+    </script>
+</body>
+</html>

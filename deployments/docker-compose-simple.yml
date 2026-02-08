@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # MySQL数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: openadmin-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: openadmin
+      MYSQL_USER: openadmin
+      MYSQL_PASSWORD: openadmin123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - openadmin-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Redis缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: openadmin-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - openadmin-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  openadmin-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

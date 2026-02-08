@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.qoobot</groupId>
+        <artifactId>openadmin</artifactId>
+        <version>10.3.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>openadmin-spring-boot-starter</artifactId>
+    <packaging>jar</packaging>
+    <name>openadmin-spring-boot-starter</name>
+
+    <dependencies>
+        <!-- Spring Boot 基础依赖 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- OpenAdmin 核心模块 -->
+        <dependency>
+            <groupId>com.qoobot</groupId>
+            <artifactId>openadmin-core</artifactId>
+        </dependency>
+        
+        <!-- OpenAdmin 安全模块 -->
+        <dependency>
+            <groupId>com.qoobot</groupId>
+            <artifactId>openadmin-security</artifactId>
+            <optional>true</optional>
+        </dependency>
+        
+        <!-- OpenAdmin 监控模块 -->
+        <dependency>
+            <groupId>com.qoobot</groupId>
+            <artifactId>openadmin-monitor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        
+        <!-- OpenAdmin 网关模块 -->
+        <dependency>
+            <groupId>com.qoobot</groupId>
+            <artifactId>openadmin-gateway</artifactId>
+            <optional>true</optional>
+        </dependency>
+        
+        <!-- OpenAdmin 配置模块 -->
+        <dependency>
+            <groupId>com.qoobot</groupId>
+            <artifactId>openadmin-config</artifactId>
+            <optional>true</optional>
+        </dependency>
+        
+        <!-- OpenAdmin 管理模块 -->
+        <dependency>
+            <groupId>com.qoobot</groupId>
+            <artifactId>openadmin-admin</artifactId>
+            <optional>true</optional>
+        </dependency>
+        
+        <!-- Jakarta 注解支持 -->
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+        </dependency>
+        
+        <!-- 测试依赖 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

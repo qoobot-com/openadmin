@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Create User</title></head>
+<body>
+<h1>Create User</h1>
+<form th:action="@{/admin/users/create}" th:object="${user}" method="post">
+    <label>Username: <input th:field="*{username}"/></label><br/>
+    <label>Display Name: <input th:field="*{displayName}"/></label><br/>
+    <label>Email: <input th:field="*{email}"/></label><br/>
+    <label>Mobile: <input th:field="*{mobile}"/></label><br/>
+    <button type="submit">Create</button>
+</form>
+</body>
+</html>

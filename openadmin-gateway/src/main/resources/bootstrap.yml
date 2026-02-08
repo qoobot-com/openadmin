@@ -1,0 +1,159 @@
+spring:
+  application:
+    name: openadmin-gateway
+  
+  profiles:
+    active: dev
+    
+  cloud:
+    nacos:
+      # Nacos服务器配置
+      server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      
+      # 服务发现配置
+      discovery:
+        namespace: ${NACOS_NAMESPACE:openadmin-dev}
+        group: ${NACOS_GROUP:GATEWAY_GROUP}
+        cluster-name: DEFAULT
+        weight: 1
+        metadata:
+          version: 1.0.0
+          description: OpenAdmin API Gateway
+        register-enabled: true
+        enabled: true
+        
+      # 配置中心配置
+      config:
+        namespace: ${NACOS_NAMESPACE:openadmin-dev}
+        group: ${NACOS_GROUP:GATEWAY_GROUP}
+        file-extension: yaml
+        timeout: 3000
+        max-retry: 10
+        config-long-poll-timeout: 46000
+        config-retry-time: 2000
+        enable-remote-sync-config: false
+        
+        # 共享配置
+        shared-configs:
+          - data-id: common.yaml
+            group: COMMON_GROUP
+            refresh: true
+          - data-id: redis.yaml
+            group: COMMON_GROUP
+            refresh: true
+            
+        # 扩展配置
+        extension-configs:
+          - data-id: gateway-routes.yaml
+            group: GATEWAY_GROUP
+            refresh: true
+          - data-id: gateway-security.yaml
+            group: GATEWAY_GROUP
+            refresh: true
+
+# 应用基本信息
+info:
+  app:
+    name: @project.name@
+    description: @project.description@
+    version: @project.version@
+  java:
+    version: @java.version@
+  spring:
+    version: @spring.version@
+
+# JVM配置
+server:
+  port: ${SERVER_PORT:9090}
+  servlet:
+    context-path: /
+  undertow:
+    # IO线程数，默认为CPU核心数
+    io-threads: ${IO_THREADS:8}
+    # 工作线程数
+    worker-threads: ${WORKER_THREADS:200}
+    # 缓冲区大小
+    buffer-size: 1024
+    # 是否直接缓冲
+    direct-buffers: true
+
+# 日志配置
+logging:
+  level:
+    com.qoobot.openadmin.gateway: ${LOG_LEVEL:INFO}
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}
+    org.springframework.security: ${SECURITY_LOG_LEVEL:INFO}
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"
+  file:
+    name: ${LOG_FILE:logs/gateway-bootstrap.log}
+
+# 端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway,refresh
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    info:
+      enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+    gateway:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        descriptions: true
+        step: 1m
+
+# 环境特定配置
+---
+spring:
+  profiles: dev
+  
+server:
+  port: 9090
+
+logging:
+  level:
+    com.qoobot.openadmin.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+
+---
+spring:
+  profiles: test
+  
+server:
+  port: 9091
+
+logging:
+  level:
+    root: INFO
+
+---
+spring:
+  profiles: prod
+  
+server:
+  port: 9090
+
+logging:
+  level:
+    root: WARN
+    com.qoobot.openadmin.gateway: INFO
+
+management:
+  endpoint:
+    health:
+      show-details: when_authorized

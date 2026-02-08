@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Assign Permissions</title></head>
+<body>
+<h1>Assign Permissions</h1>
+<form th:action="@{'/admin/roles/assign/' + ${roleId}}" method="post">
+    <!-- In a real app you'd render a permission tree; here we simulate with checkboxes -->
+    <div>
+        <label><input type="checkbox" name="permissionIds" value="perm.read" th:checked="${assigned.contains('perm.read')}"/> Read</label>
+    </div>
+    <div>
+        <label><input type="checkbox" name="permissionIds" value="perm.write" th:checked="${assigned.contains('perm.write')}"/> Write</label>
+    </div>
+    <div>
+        <label><input type="checkbox" name="permissionIds" value="perm.admin" th:checked="${assigned.contains('perm.admin')}"/> Admin</label>
+    </div>
+    <button type="submit">Save</button>
+</form>
+</body>
+</html>

@@ -1,0 +1,51 @@
+# 监控模块配置文件
+
+# Actuator配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,logfile
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  
+  # 健康检查配置
+  health:
+    defaults:
+      enabled: true
+    diskspace:
+      enabled: true
+    ping:
+      enabled: true
+      
+# Micrometer配置
+management.metrics:
+  export.prometheus.enabled: true
+  distribution.percentiles-histogram.http.server.requests: true
+  tags.application: ${spring.application.name:openadmin-monitor}
+  
+# 日志配置
+logging:
+  level:
+    com.qoobot.openadmin.monitor: DEBUG
+    org.springframework.boot.actuate: INFO
+    
+# 服务器配置
+server:
+  port: 8081
+  
+# 应用配置
+spring:
+  application:
+    name: openadmin-monitor
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html

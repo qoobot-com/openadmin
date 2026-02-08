@@ -1,0 +1,96 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: sample-monitor-app
+  
+  # 数据库配置
+  datasource:
+    url: jdbc:h2:mem:monitordb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  # H2数据库控制台
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# OpenAdmin配置
+openadmin:
+  # 安全配置
+  security:
+    enabled: true
+    jwt:
+      secret: monitor-app-secret-key-for-jwt-token-generation-and-validation
+      expiration: 86400000 # 24小时
+    cors:
+      allowed-origins: "*"
+      allowed-methods: "*"
+  
+  # 监控配置
+  monitoring:
+    enabled: true
+    performance:
+      collection-interval: 60000 # 60秒收集一次
+      retention-days: 30
+    business:
+      collection-interval: 300000 # 5分钟收集一次
+      retention-days: 90
+    alerts:
+      check-interval: 120000 # 2分钟检查一次
+      retention-days: 365
+  
+  # 网关配置
+  gateway:
+    enabled: true
+    routes:
+      - id: monitor-service
+        uri: http://localhost:8083
+        predicates:
+          - Path=/api/monitor/**
+        filters:
+          - StripPrefix=2
+
+# 日志配置
+logging:
+  level:
+    com.qoobot.openadmin: DEBUG
+    com.qoobot.openadmin.samples.monitor: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Actuator配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# 应用信息
+info:
+  app:
+    name: "@project.name@"
+    description: "@project.description@"
+    version: "@project.version@"
+  java:
+    version: "@java.version@"
